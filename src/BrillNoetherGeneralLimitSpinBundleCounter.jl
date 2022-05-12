@@ -1,6 +1,6 @@
 module BrillNoetherGeneralLimitSpinBundleCounter
 
-# Write your package code here.
+using Combinatorics
 include("Routines.jl")
 
 end
