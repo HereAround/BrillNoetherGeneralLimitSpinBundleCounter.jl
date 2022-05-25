@@ -1,7 +1,3 @@
-# edges = [[1,2],[2,3],[3,1]]
-# edges = [[1,2],[1,2],[1,2]]
-# Counter(edges)
-
 # Assumes that a connected graph is given as input
 function Counter(edges::Vector{Vector{Int64}})
     # find the indicies of the vertices
@@ -17,9 +13,13 @@ function Counter(edges::Vector{Vector{Int64}})
     print("vertices: " * string(vertices) * "\n")
     print("edges per vertex: " * string(edges_per_vertex) * "\n")
     print("degree of KC: " * string(deg_KC) * "\n\n")
-    
+    print("\n######################\n")
+    print("Analyzed setups...\n")
+    print("######################\n\n")
+
     # Make binary choice: each edge can either be blown up or not
-    total_possibilities = []
+    h0s = Int64[]
+    remaining_nodes = Int64[]
     for k in 0:length(edges)
         combinations = collect(Combinatorics.combinations(1:length(edges),k))
         for c in combinations
@@ -38,46 +38,87 @@ function Counter(edges::Vector{Vector{Int64}})
                         push!(new_edges, edges[i])
                     end
                 end
-                push!(total_possibilities,[Vector{Int64}(vertices), Vector{Vector{Int64}}(new_edges), Vector{Int64}([div(d,2) for d in new_degs])])
+                new_degrees = Vector{Int64}([div(d,2) for d in new_degs])
+                h0 = H0(Vector{Int64}(vertices), Vector{Vector{Int64}}(new_edges), Vector{Int64}([div(d,2) for d in new_degs]))
+                push!(h0s,h0)
+                push!(remaining_nodes,length(new_edges))
+                print("Remaining edges: " * string(new_edges) * "\n")
+                print("Degrees of line bundles: " * string(new_degrees) * "\n")
+                print("H0: " * string(h0) * "\n\n")
             end
         end
     end
 
-    # Inform the user about the setups to be analyzed
-    print("\n######################\n")
-    print("Setups to be analyzed:\n")
-    print("######################\n\n")
-    for p in total_possibilities
-        print("Vertices: " * string(p[1]) * "\n")
-        print("Remaining edges: " * string(p[2]) * "\n")
-        print("Degrees of line bundles: " * string(p[3]) * "\n\n")
+    # Compute statistics in multiples of 2^b1:
+    max = maximum(h0s)
+    b1 = length(edges) + 1 - length(vertices)
+    mult = 2^b1
+    total = 0
+    res_matrix = zero_matrix(ZZ, length(edges)+2, max+1)
+    for i in 1:length(h0s)
+        total += 2^b1
+        res_matrix[length(edges)+2,h0s[i]+1] += 2^b1
+        res_matrix[remaining_nodes[i]+1,h0s[i]+1] += 2^b1
     end
-    print("\n######################\n\n")
 
-    # Now compute h0 for each of these configuration under generic assumptions
-    h0s = [H0(p[1], p[2], p[3]) for p in total_possibilities]
-    return [total_possibilities, h0s]
+    # Check that we found exactly as many roots as expected
+    delta = total - 2^(2*b1)
+    if delta != 0
+        error("Found more or less roots than exist!")
+    end
+
+    # Summarize the findings
+    print("\n######################\n")
+    print("Summary:\n")
+    print("######################\n\n")
+    #display(res_matrix)
+
+    # Return the global sections
+    return res_matrix
 end
 export Counter
 
 
-# Assumes that a connected graph is given as input
+# Compute generic h0
 function H0(vertices::Vector{Int64}, edges::Vector{Vector{Int64}}, degrees::Vector{Int64})
-    # Find the number of edges attached to each vertex
-    edges_per_vertex = [sum([v in e for e in edges]) for v in vertices]
+    # Find indices of the components with non-negative degree
+    indices = findall(>=(0), degrees)
 
-    # Identify isolated components
-    h0 = 0
-    for i in 1:length(vertices)
-        if (edges_per_vertex[i] == 0) && (degrees[i] >= 0)
-            h0 = h0 + (degrees[i]+1)
+    # Construct a zero matrix
+    number_of_local_sections = sum([degrees[i] + 1 for i in indices])
+    matrix = zero_matrix(ZZ, number_of_local_sections, length(edges))
+
+    # Identify index in matrix for non-trivial sections on each component
+    indices_dict = Dict{Int64, Int64}()
+    if length(indices) > 0
+        indices_dict[indices[1]] = 1
+        index = 1
+        for i in 2:length(indices)
+            index += degrees[indices[i]] + 1
+            indices_dict[indices[i]] = index
         end
     end
 
-    # Treat remaining components
-
+    # For each edge/node add entries to the matrix
+    for i in 1:length(edges)
+        e = edges[i]
+        d1 = degrees[e[1]]
+        d2 = degrees[e[2]]
+        if d1 >= 0
+            pos_v = rand(-20:20)
+            for j in 0:d1
+                matrix[i, indices_dict[e[1]]+j] = pos_v^j
+            end
+        end
+        if d2 >= 0
+            pos_v = rand(-20:20)
+            for j in 0:d2
+                matrix[i, indices_dict[e[2]]+j] = (-1) * pos_v^j
+            end
+        end
+    end
 
     # Return h0
-    return h0
+    return nullspace(matrix)[1]
 end
 export H0
