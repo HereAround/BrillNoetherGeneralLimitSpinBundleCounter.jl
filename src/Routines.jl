@@ -52,7 +52,6 @@ function Counter(edges::Vector{Vector{Int64}})
     # Compute statistics in multiples of 2^b1:
     max = maximum(h0s)
     b1 = length(edges) + 1 - length(vertices)
-    mult = 2^b1
     total = 0
     res_matrix = zero_matrix(ZZ, length(edges)+2, max+1)
     for i in 1:length(h0s)
@@ -62,8 +61,7 @@ function Counter(edges::Vector{Vector{Int64}})
     end
 
     # Check that we found exactly as many roots as expected
-    delta = total - 2^(2*b1)
-    if delta != 0
+    if total != 2^(2*b1)
         error("Found more or less roots than exist!")
     end
 
@@ -86,7 +84,7 @@ function H0(vertices::Vector{Int64}, edges::Vector{Vector{Int64}}, degrees::Vect
 
     # Construct a zero matrix
     number_of_local_sections = sum([degrees[i] + 1 for i in indices])
-    matrix = zero_matrix(ZZ, number_of_local_sections, length(edges))
+    matrix = zero_matrix(ZZ, length(edges), number_of_local_sections)
 
     # Identify index in matrix for non-trivial sections on each component
     indices_dict = Dict{Int64, Int64}()
