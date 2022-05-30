@@ -8,14 +8,6 @@ function Counter(edges::Vector{Vector{Int64}})
     
     # compute degree of KC
     deg_KC = [-2+e for e in edges_per_vertex]
-    
-    # print what we computed thus far
-    print("vertices: " * string(vertices) * "\n")
-    print("edges per vertex: " * string(edges_per_vertex) * "\n")
-    print("degree of KC: " * string(deg_KC) * "\n\n")
-    print("\n######################\n")
-    print("Analyzed setups...\n")
-    print("######################\n\n")
 
     # Make binary choice: each edge can either be blown up or not
     h0s = Int64[]
@@ -42,9 +34,6 @@ function Counter(edges::Vector{Vector{Int64}})
                 h0 = H0(Vector{Int64}(vertices), Vector{Vector{Int64}}(new_edges), Vector{Int64}([div(d,2) for d in new_degs]))
                 push!(h0s,h0)
                 push!(remaining_nodes,length(new_edges))
-                print("Remaining edges: " * string(new_edges) * "\n")
-                print("Degrees of line bundles: " * string(new_degrees) * "\n")
-                print("H0: " * string(h0) * "\n\n")
             end
         end
     end
@@ -64,12 +53,6 @@ function Counter(edges::Vector{Vector{Int64}})
     if total != 2^(2*b1)
         error("Found more or less roots than exist!")
     end
-
-    # Summarize the findings
-    print("\n######################\n")
-    print("Summary:\n")
-    print("######################\n\n")
-    #display(res_matrix)
 
     # Return the global sections
     return res_matrix
