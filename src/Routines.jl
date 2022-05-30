@@ -4,12 +4,19 @@ function Counter(edges::Vector{Vector{Int64}})
     vertices = unique(reduce(vcat,edges))
     
     # find the number of edges attached to each vertex
-    edges_per_vertex = [sum([v in e for e in edges]) for v in vertices]
-    
+    nodes_per_vertex = fill(0,length(vertices))
+    for e in edges
+        pos1 = findfirst(x->x==e[1],vertices)
+        pos2 = findfirst(x->x==e[2],vertices)
+        nodes_per_vertex[pos1] += 1
+        nodes_per_vertex[pos2] += 1
+    end
+
     # compute degree of KC
-    deg_KC = [-2+e for e in edges_per_vertex]
+    deg_KC = [-2+e for e in nodes_per_vertex]
 
     # Make binary choice: each edge can either be blown up or not
+    # Below, c reflects those edges/nodes that we blow up
     h0s = Int64[]
     remaining_nodes = Int64[]
     for k in 0:length(edges)
@@ -21,7 +28,7 @@ function Counter(edges::Vector{Vector{Int64}})
                 new_degs[edges[edge_index][1]] = new_degs[edges[edge_index][1]] - 1
                 new_degs[edges[edge_index][2]] = new_degs[edges[edge_index][2]] - 1
             end
-            
+
             # check if all degrees are divisible by two
             if all(y->iseven(y),new_degs)
                 new_edges = []
@@ -30,6 +37,8 @@ function Counter(edges::Vector{Vector{Int64}})
                         push!(new_edges, edges[i])
                     end
                 end
+
+                # if yes, compute h0 for generic positions of the nodes
                 new_degrees = Vector{Int64}([div(d,2) for d in new_degs])
                 h0 = H0(Vector{Int64}(vertices), Vector{Vector{Int64}}(new_edges), Vector{Int64}([div(d,2) for d in new_degs]))
                 push!(h0s,h0)
@@ -38,7 +47,7 @@ function Counter(edges::Vector{Vector{Int64}})
         end
     end
 
-    # Compute statistics in multiples of 2^b1:
+    # Prepare statistics
     max = maximum(h0s)
     b1 = length(edges) + 1 - length(vertices)
     total = 0
@@ -54,7 +63,7 @@ function Counter(edges::Vector{Vector{Int64}})
         error("Found more or less roots than exist!")
     end
 
-    # Return the global sections
+    # Return the result
     return res_matrix
 end
 export Counter
@@ -80,7 +89,7 @@ function H0(vertices::Vector{Int64}, edges::Vector{Vector{Int64}}, degrees::Vect
         end
     end
 
-    # For each edge/node add entries to the matrix
+    # For each node add entries to the matrix
     for i in 1:length(edges)
         e = edges[i]
         d1 = degrees[e[1]]
@@ -88,13 +97,13 @@ function H0(vertices::Vector{Int64}, edges::Vector{Vector{Int64}}, degrees::Vect
         if d1 >= 0
             pos_v = rand(-20:20)
             for j in 0:d1
-                matrix[i, indices_dict[e[1]]+j] = pos_v^j
+                matrix[i, indices_dict[e[1]]+j] += pos_v^j
             end
         end
         if d2 >= 0
             pos_v = rand(-20:20)
             for j in 0:d2
-                matrix[i, indices_dict[e[2]]+j] = (-1) * pos_v^j
+                matrix[i, indices_dict[e[2]]+j] += (-1) * pos_v^j
             end
         end
     end
