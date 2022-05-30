@@ -13,7 +13,7 @@ function Counter(edges::Vector{Vector{Int64}})
     h0s = Int64[]
     remaining_nodes = Int64[]
     for k in 0:length(edges)
-        combinations = collect(Combinatorics.combinations(1:length(edges),k))
+        combinations = Oscar.Hecke.subsets([e for e in 1:length(edges)],k)
         for c in combinations
             # compute the new degrees from these blowups
             new_degs = [d for d in deg_KC]
