@@ -19,6 +19,7 @@ function Counter(edges::Vector{Vector{Int64}})
     res_matrix = zero_matrix(ZZ, length(edges)+1, sum([deg_KC[k]+1 for k in findall(>=(0), deg_KC)])+1)
     mult = 2^(length(edges) + 1 - length(vertices))
     total = 0
+    h0Max = 1
 
     # Iterate over all roots (below, c are the edges/nodes that we blow up)
     for k in 0:length(edges)
@@ -44,6 +45,11 @@ function Counter(edges::Vector{Vector{Int64}})
                 end
                 h0 = H0(vert_dict, new_edges, [div(d,2) for d in new_degs])
 
+                # Update h0Max
+                if h0+1 > h0Max
+                    h0Max = h0+1
+                end
+
                 # Update result matrix and total
                 res_matrix[length(new_edges)+1,h0+1] += mult
                 total += mult
@@ -57,7 +63,7 @@ function Counter(edges::Vector{Vector{Int64}})
     end
 
     # Return the result
-    return res_matrix
+    return res_matrix[:,1:h0Max]
 end
 export Counter
 
