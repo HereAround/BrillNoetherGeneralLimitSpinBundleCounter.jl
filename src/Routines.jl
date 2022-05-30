@@ -1,4 +1,22 @@
 # Assumes that a connected graph is given as input
+function Generic_Brill_Noether_numbers(edges::Vector{Vector{Int64}})
+    # Special node alignment can lead to jumps.
+    # We need to detect this here at least experimentally.
+    # To this end, we repeat the same computation 3 times and compare the outcomes.
+    res1 = Counter(edges)
+    res2 = Counter(edges)
+    res3 = Counter(edges)
+
+    # Check if they are the same
+    if (res1 != res2) || (res1 != res3) || (res2 != res3)
+        error("Jumping circuit detected!")
+    end
+
+    # Proceed
+    return [sum(res1[:,k]) for k in 1:ncols(res1)]
+end
+export Generic_Brill_Noether_numbers
+
 function Counter(edges::Vector{Vector{Int64}})
     # Make dictionary with index for each vertex
     vertices = unique(reduce(vcat,edges))
@@ -84,7 +102,7 @@ function H0(vert_dict::Dict{Int64, Int64}, edges::Vector{Vector{Int64}}, degrees
         indices_dict[indices[1]] = 1
         index = 1
         for i in 2:length(indices)
-            index += degrees[indices[i]] + 1
+            index += degrees[indices[i-1]] + 1
             indices_dict[indices[i]] = index
         end
     end
@@ -93,13 +111,13 @@ function H0(vert_dict::Dict{Int64, Int64}, edges::Vector{Vector{Int64}}, degrees
     for i in 1:length(edges)
         e = edges[i]
         if degrees[vert_dict[e[1]]] >= 0
-            pos_v = rand(-20:20)
+            pos_v = rand(-100:100)
             for j in 0:degrees[vert_dict[e[1]]]
                 matrix[i, indices_dict[vert_dict[e[1]]]+j] += pos_v^j
             end
         end
         if degrees[vert_dict[e[2]]] >= 0
-            pos_v = rand(-20:20)
+            pos_v = rand(-100:100)
             for j in 0:degrees[vert_dict[e[2]]]
                 matrix[i, indices_dict[vert_dict[e[2]]]+j] += (-1) * pos_v^j
             end
