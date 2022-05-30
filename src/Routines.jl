@@ -6,19 +6,21 @@ function Counter(edges::Vector{Vector{Int64}})
     # find the number of edges attached to each vertex
     nodes_per_vertex = fill(0,length(vertices))
     for e in edges
-        pos1 = findfirst(x->x==e[1],vertices)
-        pos2 = findfirst(x->x==e[2],vertices)
-        nodes_per_vertex[pos1] += 1
-        nodes_per_vertex[pos2] += 1
+        nodes_per_vertex[findfirst(x->x==e[1],vertices)] += 1
+        nodes_per_vertex[findfirst(x->x==e[2],vertices)] += 1
     end
 
     # compute degree of KC
     deg_KC = [-2+e for e in nodes_per_vertex]
 
-    # Make binary choice: each edge can either be blown up or not
-    # Below, c reflects those edges/nodes that we blow up
-    h0s = Int64[]
-    remaining_nodes = Int64[]
+    # create a matrix to collect results
+    res_matrix = zero_matrix(ZZ, length(edges)+1, sum([deg_KC[k]+1 for k in findall(>=(0), deg_KC)])+1)
+
+    # compute multiplicity
+    mult = 2^(length(edges) + 1 - length(vertices))
+
+    # Initialize total
+    total = 0
     for k in 0:length(edges)
         combinations = Oscar.Hecke.subsets([e for e in 1:length(edges)],k)
         for c in combinations
@@ -31,35 +33,25 @@ function Counter(edges::Vector{Vector{Int64}})
 
             # check if all degrees are divisible by two
             if all(y->iseven(y),new_degs)
+
+                # compute h0
                 new_edges = []
                 for i in 1:length(edges)
                     if !(i in c)
                         push!(new_edges, edges[i])
                     end
                 end
+                h0 = H0(Vector{Vector{Int64}}(new_edges), Vector{Int64}([div(d,2) for d in new_degs]))
 
-                # if yes, compute h0 for generic positions of the nodes
-                new_degrees = Vector{Int64}([div(d,2) for d in new_degs])
-                h0 = H0(Vector{Int64}(vertices), Vector{Vector{Int64}}(new_edges), Vector{Int64}([div(d,2) for d in new_degs]))
-                push!(h0s,h0)
-                push!(remaining_nodes,length(new_edges))
+                # update result matrix and total
+                res_matrix[length(new_edges)+1,h0+1] += mult
+                total += mult
             end
         end
     end
 
-    # Prepare statistics
-    max = maximum(h0s)
-    b1 = length(edges) + 1 - length(vertices)
-    total = 0
-    res_matrix = zero_matrix(ZZ, length(edges)+2, max+1)
-    for i in 1:length(h0s)
-        total += 2^b1
-        res_matrix[length(edges)+2,h0s[i]+1] += 2^b1
-        res_matrix[remaining_nodes[i]+1,h0s[i]+1] += 2^b1
-    end
-
     # Check that we found exactly as many roots as expected
-    if total != 2^(2*b1)
+    if total != mult * mult
         error("Found more or less roots than exist!")
     end
 
@@ -70,7 +62,7 @@ export Counter
 
 
 # Compute generic h0
-function H0(vertices::Vector{Int64}, edges::Vector{Vector{Int64}}, degrees::Vector{Int64})
+function H0(edges::Vector{Vector{Int64}}, degrees::Vector{Int64})
     # Find indices of the components with non-negative degree
     indices = findall(>=(0), degrees)
 
@@ -92,17 +84,15 @@ function H0(vertices::Vector{Int64}, edges::Vector{Vector{Int64}}, degrees::Vect
     # For each node add entries to the matrix
     for i in 1:length(edges)
         e = edges[i]
-        d1 = degrees[e[1]]
-        d2 = degrees[e[2]]
-        if d1 >= 0
+        if degrees[e[1]] >= 0
             pos_v = rand(-20:20)
-            for j in 0:d1
+            for j in 0:degrees[e[1]]
                 matrix[i, indices_dict[e[1]]+j] += pos_v^j
             end
         end
-        if d2 >= 0
+        if degrees[e[2]] >= 0
             pos_v = rand(-20:20)
-            for j in 0:d2
+            for j in 0:degrees[e[2]]
                 matrix[i, indices_dict[e[2]]+j] += (-1) * pos_v^j
             end
         end
